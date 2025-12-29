@@ -1,0 +1,51 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: python-flow-front
+    ports:
+      # Map host 3000 to FastAPI 8000
+      - "3000:8000"
+    environment:
+      - API_URL=http://localhost:4200 # Frontend still talks to Node Backend
+      - ORIGIN=http://localhost:3000
+    networks:
+      - "hyperspace"     
+
+  backend:
+    build: ./backend
+    container_name: node-flow-back    
+    ports:
+      - "4200:4000"
+    command: node --watch server.js
+    environment:
+      # Tell Node where Python is
+      - PYTHON_SERVICE_URL=http://python_backend:8000     
+    volumes:
+      # CRITICAL: Sync source code so edits work!
+      - ./backend:/app
+      # PROTECT: Keep container dependencies safe
+      - /app/node_modules
+      # DATA:
+      - ./backend/data:/app/data
+      - ./backend/plugins:/app/plugins
+      - ./workflows:/app/workflows
+    networks:
+      - "hyperspace" 
+
+  python_backend:
+    build: ./python_backend
+    container_name: python-flow-ai
+    volumes:
+      # ADD THIS LINE: Sync your local code to the container
+      - ./python_backend:/app    
+      # Map the SAME plugins folder so you can drop py files easily?
+      # Or a separate one. Let's make a separate one for clarity.
+      - ./python_backend/plugins:/app/plugins
+    networks:
+      - "hyperspace"
+      
+networks:
+  hyperspace:
+    external: true      
